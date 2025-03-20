@@ -61,14 +61,10 @@ class FtpService {
                     val ekpLocalFilePath = File(pathLocal, ekpFile.name)
                     if (!ekpFile.isDirectory && (ekpFile.name.endsWith(".rar") || ekpFile.name.endsWith(".zip"))) {
                         try {
-                            val remoteFile = ftpClient.mlistFile(ekpRemoteFilePath)
-                            if (shouldDownloadFile(remoteFile, ekpLocalFilePath)) {
+                            if (!ekpLocalFilePath.exists()) {
                                 val outputStream = FileOutputStream(ekpLocalFilePath)
                                 ftpClient.retrieveFile(ekpRemoteFilePath, outputStream)
                                 outputStream.close()
-                                if (remoteFile?.timestamp != null) {
-                                    ekpLocalFilePath.setLastModified(remoteFile.timestamp.timeInMillis)
-                                }
                             }
                         } catch (e: Exception) {
                             logger.error(e.message)
@@ -77,15 +73,6 @@ class FtpService {
                 }
             }
         }
-    }
-
-    fun shouldDownloadFile(remoteFile: FTPFile?, localFile: File): Boolean {
-        if (!localFile.exists()) return true
-        if (remoteFile == null) return true
-        if (localFile.length() != remoteFile.size) return true
-        val remoteTimestamp = remoteFile.timestamp?.timeInMillis
-        val localTimestamp = localFile.lastModified()
-        return remoteTimestamp != null && remoteTimestamp != localTimestamp
     }
 
     private fun parseFolderName(name: String): FolderInfo? {

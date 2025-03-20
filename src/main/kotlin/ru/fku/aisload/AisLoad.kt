@@ -20,10 +20,6 @@ open class AisLoadApplication {
         var loadProm = false;
         var loadOe = false;
     }
-
-    init {
-        FtpService().checkAndDownload(config.ftpDirectoryProm, config.localDirectoryProm)
-    }
 }
 
 val logger: Logger = LoggerFactory.getLogger("Main")

@@ -4,12 +4,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
-@Suppress("unused")
 @Component
 class FTPScheduledTask(val ftpService: FtpService) {
     private val logger = LoggerFactory.getLogger(FtpService::class.java)
 
-    @Suppress("unused")
     @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskProm() {
         if (!AisLoadApplication.loadProm) {
@@ -20,7 +18,6 @@ class FTPScheduledTask(val ftpService: FtpService) {
         }
     }
 
-    @Suppress("unused")
     @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskOe() {
         if (!AisLoadApplication.loadOe) {
