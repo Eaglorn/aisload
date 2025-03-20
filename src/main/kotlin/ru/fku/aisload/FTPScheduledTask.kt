@@ -6,20 +6,28 @@ import org.springframework.stereotype.Component
 
 @Suppress("unused")
 @Component
-class FTPScheduledTask (val ftpService: FtpService) {
+class FTPScheduledTask(val ftpService: FtpService) {
     private val logger = LoggerFactory.getLogger(FtpService::class.java)
 
     @Suppress("unused")
-    @Scheduled(cron = "* * * * * *")
+    @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskProm() {
-        val config: Config = AisLoadApplication.config
-        ftpService.checkAndDownloadNewFolders(config.FTP_DIRECTORY_PROM, config.LOCAL_DIRECTORY_PROM)
+        if(!AisLoadApplication.loadProm) {
+            AisLoadApplication.loadProm = true
+            val config: Config = AisLoadApplication.config
+            ftpService.checkAndDownload(config.ftpDirectoryProm, config.localDirectoryProm)
+            AisLoadApplication.loadProm = false
+        }
     }
 
     @Suppress("unused")
-    @Scheduled(cron = "* * * * * *")
+    @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskOe() {
-        val config: Config = AisLoadApplication.config
-        ftpService.checkAndDownloadNewFolders(config.FTP_DIRECTORY_OE, config.LOCAL_DIRECTORY_OE)
+        if(!AisLoadApplication.loadOe) {
+            AisLoadApplication.loadOe = true
+            val config: Config = AisLoadApplication.config
+            ftpService.checkAndDownload(config.ftpDirectoryOe, config.localDirectoryOe)
+            AisLoadApplication.loadOe = false
+        }
     }
 }

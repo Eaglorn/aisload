@@ -8,14 +8,14 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class Config {
-    var FTP_SERVER: String = ""
-    var FTP_USER: String = ""
-    var FTP_PASSWORD: String = ""
-    var FTP_DIRECTORY_PROM: String = ""
-    var LOCAL_DIRECTORY_PROM: String = ""
-    var FTP_DIRECTORY_OE: String = ""
-    var LOCAL_DIRECTORY_OE : String = ""
-    var MAX_FOLDERS_TO_KEEP: Int = 0
+    var ftpServer: String = ""
+    var ftpUser: String = ""
+    var ftpPassword: String = ""
+    var ftpDirectoryProm: String = ""
+    var localDirectoryProm: String = ""
+    var ftpDirectoryOe: String = ""
+    var localDirectoryOe: String = ""
+    var maxFolderToKeep: Int = 0
 
     companion object {
         fun load(path: String): Config {

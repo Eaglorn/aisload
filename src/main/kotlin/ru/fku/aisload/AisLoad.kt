@@ -12,20 +12,25 @@ import ru.fku.aisload.AisLoadApplication.Companion.config
 @SpringBootApplication(scanBasePackages = ["ru.fku.aisload"])
 @EnableScheduling
 open class AisLoadApplication {
+    private val logger = LoggerFactory.getLogger(FtpService::class.java)
+
     companion object {
         lateinit var config: Config
-        lateinit var applicationContext : ApplicationContext
+        lateinit var applicationContext: ApplicationContext
+        var loadProm = false;
+        var loadOe = false;
+    }
+
+    init {
+        FtpService().checkAndDownload(config.ftpDirectoryProm, config.localDirectoryProm)
     }
 }
 
-val logger : Logger = LoggerFactory.getLogger("Main")
+val logger: Logger = LoggerFactory.getLogger("Main")
 
 fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
-        System.setProperty("logPath", args[0])
-        config = Config.load(args[1])
-    } else {
-        System.setProperty("logPath", "./logs")
+        config = Config.load(args[0])
     }
     applicationContext = runApplication<AisLoadApplication>()
 }

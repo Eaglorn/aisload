@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="logPath">${sys:logPath:-./logs}</Property>
+    </Properties>
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} | %d{HH:mm} | %-5p | %c{1}:%L - %msg%n"/>
+        </Console>
+        <RollingFile name="RollingFileAppender"
+                     fileName="${logPath}/aisload.log"
+                     filePattern="${logPath}/app-%d{yyyy-MM}.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} | %d{HH:mm} | %-5p | %c{1}:%L - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="RollingFileAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>
