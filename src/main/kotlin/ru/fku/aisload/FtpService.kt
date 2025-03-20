@@ -12,7 +12,7 @@ import java.io.FileOutputStream
 class FtpService {
     private val logger = LoggerFactory.getLogger(FtpService::class.java)
 
-    fun checkAndDownload(pathFtp: String, pathLocal: String) {
+    fun checkAndDownload(pathFtp: String, pathLocal: String, appName: String) {
         val config: Config = AisLoadApplication.config
         val ftpClient = FTPClient()
         try {
@@ -26,7 +26,7 @@ class FtpService {
                 .sortedByDescending { it }
                 .take(config.maxFolderToKeep)
             for (folder in folders) {
-                downloadFolder(ftpClient, "$pathFtp/${folder.name}", pathLocal)
+                downloadFolder(ftpClient, "$pathFtp/${folder.name}", pathLocal, appName)
             }
             val localFiles = File(pathLocal).listFiles()
             if (localFiles != null) {
@@ -50,7 +50,7 @@ class FtpService {
         }
     }
 
-    private fun downloadFolder(ftpClient: FTPClient, remotePath: String, pathLocal: String) {
+    private fun downloadFolder(ftpClient: FTPClient, remotePath: String, pathLocal: String, appName: String) {
         val files = ftpClient.listFiles(remotePath)
         for (file in files) {
             val remoteFilePath = "$remotePath/${file.name}"
@@ -62,9 +62,12 @@ class FtpService {
                     if (!ekpFile.isDirectory && (ekpFile.name.endsWith(".rar") || ekpFile.name.endsWith(".zip"))) {
                         try {
                             if (!ekpLocalFilePath.exists()) {
+                                logger.info("Найдена новая версия: $appName - ${ekpFile.name}")
+                                logger.info("Загрузка начата: $appName - ${ekpFile.name}")
                                 val outputStream = FileOutputStream(ekpLocalFilePath)
                                 ftpClient.retrieveFile(ekpRemoteFilePath, outputStream)
                                 outputStream.close()
+                                logger.info("Загрузка завершена: $appName - ${ekpFile.name}")
                             }
                         } catch (e: Exception) {
                             logger.error(e.message)
