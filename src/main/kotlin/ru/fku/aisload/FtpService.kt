@@ -2,6 +2,7 @@ package ru.fku.aisload
 
 import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
+import org.apache.commons.net.ftp.FTPFile
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.io.File
@@ -19,31 +20,22 @@ class FtpService {
             ftpClient.login(config.ftpUser, config.ftpPassword)
             ftpClient.enterLocalPassiveMode()
             ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
-
             val folders = ftpClient.listFiles(pathFtp)
                 .filter { it.isDirectory && it.name.matches(Regex("\\d+_\\d+_\\d+_\\d+")) }
                 .mapNotNull { parseFolderName(it.name) }
                 .sortedByDescending { it }
-
+                .take(config.maxFolderToKeep)
             for (folder in folders) {
-                val folderName = folder.name
-                val localFolder = File("$pathLocal/$folderName")
-                if (!localFolder.exists()) {
-                    downloadFolder(ftpClient, "$pathFtp/$folderName", localFolder)
-                }
+                downloadFolder(ftpClient, "$pathFtp/${folder.name}", pathLocal)
             }
-
-            val localFolders = File(pathLocal).listFiles()!!
-                .filter { it.isDirectory && it.name.matches(Regex("\\d+_\\d+_\\d+_\\d+")) }
-                .mapNotNull { parseFolderName(it.name) }
-                .sortedByDescending { it }
-                .toList()
-
-            if (localFolders.size > config.maxFolderToKeep) {
-                val foldersToDelete = localFolders.take(localFolders.size - config.maxFolderToKeep)
-                for (folder in foldersToDelete) {
-                    val folderToDelete = File("$pathLocal/${folder.name}")
-                    folderToDelete.deleteRecursively()
+            val localFiles = File(pathLocal).listFiles()
+            if (localFiles != null) {
+                val filesToDelete = localFiles
+                    .filter { it.isFile && (it.name.endsWith(".rar") || it.name.endsWith(".zip")) }
+                    .sortedByDescending { it.lastModified() }
+                    .drop(config.maxFolderToKeep)
+                for (file in filesToDelete) {
+                    file.delete()
                 }
             }
         } catch (e: Exception) {
@@ -58,22 +50,42 @@ class FtpService {
         }
     }
 
-    private fun downloadFolder(ftpClient: FTPClient, remotePath: String, localFolder: File) {
-        localFolder.mkdirs()
+    private fun downloadFolder(ftpClient: FTPClient, remotePath: String, pathLocal: String) {
         val files = ftpClient.listFiles(remotePath)
         for (file in files) {
             val remoteFilePath = "$remotePath/${file.name}"
-            val localFilePath = File(localFolder, file.name)
-            if (file.isDirectory && file.name.contains("EKP")) {
-                downloadFolder(ftpClient, remoteFilePath, localFilePath)
-            } else {
-                if(file.name.contains(".rar")) {
-                    val outputStream = FileOutputStream(localFilePath)
-                    ftpClient.retrieveFile(remoteFilePath, outputStream)
-                    outputStream.close()
+            if (file.isDirectory && file.name.startsWith("EKP")) {
+                val ekpFiles = ftpClient.listFiles(remoteFilePath)
+                for (ekpFile in ekpFiles) {
+                    val ekpRemoteFilePath = "$remoteFilePath/${ekpFile.name}"
+                    val ekpLocalFilePath = File(pathLocal, ekpFile.name)
+                    if (!ekpFile.isDirectory && (ekpFile.name.endsWith(".rar") || ekpFile.name.endsWith(".zip"))) {
+                        try {
+                            val remoteFile = ftpClient.mlistFile(ekpRemoteFilePath)
+                            if (shouldDownloadFile(remoteFile, ekpLocalFilePath)) {
+                                val outputStream = FileOutputStream(ekpLocalFilePath)
+                                ftpClient.retrieveFile(ekpRemoteFilePath, outputStream)
+                                outputStream.close()
+                                if (remoteFile?.timestamp != null) {
+                                    ekpLocalFilePath.setLastModified(remoteFile.timestamp.timeInMillis)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            logger.error(e.message)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    fun shouldDownloadFile(remoteFile: FTPFile?, localFile: File): Boolean {
+        if (!localFile.exists()) return true
+        if (remoteFile == null) return true
+        if (localFile.length() != remoteFile.size) return true
+        val remoteTimestamp = remoteFile.timestamp?.timeInMillis
+        val localTimestamp = localFile.lastModified()
+        return remoteTimestamp != null && remoteTimestamp != localTimestamp
     }
 
     private fun parseFolderName(name: String): FolderInfo? {
@@ -88,6 +100,7 @@ class FtpService {
                 buildNumber = parts[3].toInt()
             )
         } catch (e: NumberFormatException) {
+            logger.error(e.message)
             null
         }
     }

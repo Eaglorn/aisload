@@ -12,7 +12,7 @@ class FTPScheduledTask(val ftpService: FtpService) {
     @Suppress("unused")
     @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskProm() {
-        if(!AisLoadApplication.loadProm) {
+        if (!AisLoadApplication.loadProm) {
             AisLoadApplication.loadProm = true
             val config: Config = AisLoadApplication.config
             ftpService.checkAndDownload(config.ftpDirectoryProm, config.localDirectoryProm)
@@ -23,7 +23,7 @@ class FTPScheduledTask(val ftpService: FtpService) {
     @Suppress("unused")
     @Scheduled(cron = "0 0 21-23,0-7 * * *")
     fun runFtpTaskOe() {
-        if(!AisLoadApplication.loadOe) {
+        if (!AisLoadApplication.loadOe) {
             AisLoadApplication.loadOe = true
             val config: Config = AisLoadApplication.config
             ftpService.checkAndDownload(config.ftpDirectoryOe, config.localDirectoryOe)
