@@ -62,7 +62,7 @@ class FtpService {
                     if (!ekpFile.isDirectory && (ekpFile.name.endsWith(".rar") || ekpFile.name.endsWith(".zip"))) {
                         try {
                             if (!ekpLocalFilePath.exists()) {
-                                logger.info("Найдена новая версия: $appName - ${ekpFile.name}")
+                                logger.info("Найдена версия: $appName - ${ekpFile.name}")
                                 logger.info("Загрузка начата: $appName - ${ekpFile.name}")
                                 val outputStream = FileOutputStream(ekpLocalFilePath)
                                 ftpClient.retrieveFile(ekpRemoteFilePath, outputStream)
