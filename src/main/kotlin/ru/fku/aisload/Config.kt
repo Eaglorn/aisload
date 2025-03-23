@@ -11,10 +11,7 @@ class Config {
     var ftpServer: String = ""
     var ftpUser: String = ""
     var ftpPassword: String = ""
-    var ftpDirectoryProm: String = ""
-    var localDirectoryProm: String = ""
-    var ftpDirectoryOe: String = ""
-    var localDirectoryOe: String = ""
+    var directories : ArrayList<DirectoryPath> = ArrayList()
     var maxFolderToKeep: Int = 0
 
     companion object {

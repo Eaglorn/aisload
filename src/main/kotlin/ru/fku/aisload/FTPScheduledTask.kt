@@ -11,22 +11,14 @@ class FTPScheduledTask(val ftpService: FtpService) {
     @Scheduled(cron = "0 0 21-23,0-6 * * *")
     fun runFtpTaskProm() {
         if (!AisLoadApplication.loadProm) {
-            logger.info("Проверка ПРОМ")
+            logger.info("Проверка новых версий")
             AisLoadApplication.loadProm = true
             val config: Config = AisLoadApplication.config
-            ftpService.checkAndDownload(config.ftpDirectoryProm, config.localDirectoryProm, "PROM")
+            config.directories.forEach {
+                ftpService.checkAndDownload(it.ftp, it.local, it.name)
+            }
             AisLoadApplication.loadProm = false
         }
     }
 
-    @Scheduled(cron = "0 0 21-23,0-6 * * *")
-    fun runFtpTaskOe() {
-        if (!AisLoadApplication.loadOe) {
-            logger.info("Проверка ОЕ")
-            AisLoadApplication.loadOe = true
-            val config: Config = AisLoadApplication.config
-            ftpService.checkAndDownload(config.ftpDirectoryOe, config.localDirectoryOe, "OE")
-            AisLoadApplication.loadOe = false
-        }
-    }
 }
