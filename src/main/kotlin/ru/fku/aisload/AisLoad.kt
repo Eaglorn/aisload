@@ -12,18 +12,10 @@ import ru.fku.aisload.AisLoadApplication.Companion.config
 @SpringBootApplication(scanBasePackages = ["ru.fku.aisload"])
 @EnableScheduling
 open class AisLoadApplication {
-    private val logger = LoggerFactory.getLogger(FtpService::class.java)
-
     companion object {
         var config: Config? = null
         lateinit var applicationContext: ApplicationContext
         var isLoad = false
-    }
-
-    init {
-        config?.directories?.forEach {
-            FtpService().checkAndDownload(it.ftp + "/", it.local + "/", it.name)
-        }
     }
 }
 

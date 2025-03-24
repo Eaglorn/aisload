@@ -10,13 +10,17 @@ class FTPScheduledTask(val ftpService: FtpService) {
 
     @Scheduled(cron = "0 0 21-23,0-6 * * *")
     fun runFtpTask() {
-        if (!AisLoadApplication.isLoad) {
-            AisLoadApplication.isLoad = true
-            val config: Config? = AisLoadApplication.config
-            config?.directories?.forEach {
-                ftpService.checkAndDownload(it.ftp + "/", it.local + "/", it.name)
+        try {
+            if (!AisLoadApplication.isLoad) {
+                AisLoadApplication.isLoad = true
+                val config: Config? = AisLoadApplication.config
+                config?.directories?.forEach {
+                    ftpService.checkAndDownload(it.ftp + "/", it.local + "/", it.name)
+                }
+                AisLoadApplication.isLoad = false
             }
-            AisLoadApplication.isLoad = false
+        } catch (e: Exception) {
+            logger.error(e.message)
         }
     }
 
