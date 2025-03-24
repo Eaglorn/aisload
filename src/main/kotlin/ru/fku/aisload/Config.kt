@@ -11,18 +11,24 @@ class Config {
     var ftpServer: String = ""
     var ftpUser: String = ""
     var ftpPassword: String = ""
-    var directories : ArrayList<DirectoryPath> = ArrayList()
+    var directories: ArrayList<DirectoryPath> = ArrayList()
     var maxFolderToKeep: Int = 0
 
     companion object {
-        fun load(path: String): Config {
-            return if (Files.exists(Paths.get(path))) {
+        fun load(path: String): Config? {
+            if (Files.exists(Paths.get(path))) {
                 val gson: Gson = GsonBuilder().create()
-                val configServer: Config =
-                    gson.fromJson(JsonReader(FileReader(path)), Config::class.java)
-                configServer
+                try {
+                    val configServer: Config =
+                        gson.fromJson(JsonReader(FileReader(path)), Config::class.java)
+                    logger.info("Config loaded.")
+                    return configServer
+                } catch (e: Exception) {
+                    logger.error(e.message)
+                    return null
+                }
             } else {
-                Config()
+                return null
             }
         }
     }

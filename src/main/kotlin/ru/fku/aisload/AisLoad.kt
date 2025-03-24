@@ -15,10 +15,15 @@ open class AisLoadApplication {
     private val logger = LoggerFactory.getLogger(FtpService::class.java)
 
     companion object {
-        lateinit var config: Config
+        var config: Config? = null
         lateinit var applicationContext: ApplicationContext
-        var loadProm = false;
-        var loadOe = false;
+        var isLoad = false
+    }
+
+    init {
+        config?.directories?.forEach {
+            FtpService().checkAndDownload(it.ftp + "/", it.local + "/", it.name)
+        }
     }
 }
 
@@ -27,6 +32,10 @@ val logger: Logger = LoggerFactory.getLogger("Main")
 fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         config = Config.load(args[0])
+        if (config != null) {
+            applicationContext = runApplication<AisLoadApplication>()
+        } else {
+            logger.error("Config not laded.")
+        }
     }
-    applicationContext = runApplication<AisLoadApplication>()
 }
