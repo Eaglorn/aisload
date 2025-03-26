@@ -23,5 +23,4 @@ class FTPScheduledTask(val ftpService: FtpService) {
             logger.error(e.message)
         }
     }
-
 }

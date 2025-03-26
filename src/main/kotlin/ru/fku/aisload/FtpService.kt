@@ -5,8 +5,12 @@ import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPFile
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.charset.Charset
+import java.security.MessageDigest
 
 @Service
 class FtpService {
@@ -50,6 +54,19 @@ class FtpService {
         }
     }
 
+    fun calculateFileHash(file: File, algorithm: String = "SHA-1"): String {
+        val digest = MessageDigest.getInstance(algorithm)
+        FileInputStream(file).use { fis ->
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            while (fis.read(buffer).also { bytesRead = it } != -1) {
+                digest.update(buffer, 0, bytesRead)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+
     private fun downloadFile(
         ftpClient: FTPClient,
         ftpFile: FTPFile,
@@ -65,37 +82,54 @@ class FtpService {
         logger.info("Load end: $appName - ${ftpFile.name}")
     }
 
+    private fun downloadFileToString(ftpClient: FTPClient, remoteFilePath: String, charset: Charset = Charsets.UTF_8): String {
+        try {
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            ftpClient.retrieveFile(remoteFilePath, byteArrayOutputStream)
+            return byteArrayOutputStream.toString(charset.name())
+        } catch (e: Exception) {
+            logger.error(e.message)
+            return ""
+        }
+    }
+
     private fun downloadFolder(ftpClient: FTPClient, remotePath: String, pathLocal: String, appName: String) {
         try {
             val files = ftpClient.listFiles(remotePath)
             for (file in files) {
-                val remoteFilePath = "$remotePath/${file.name}"
+                val remoteFilePathParent = "$remotePath/${file.name}"
                 if (file.isDirectory && file.name.startsWith("EKP")) {
-                    val ftpFiles = ftpClient.listFiles(remoteFilePath)
+                    val ftpFiles = ftpClient.listFiles(remoteFilePathParent)
                     for (ftpFile in ftpFiles) {
-                        val remoteFilePath = "$remoteFilePath/${ftpFile.name}"
+                        val remoteFilePathChild = "$remoteFilePathParent/${ftpFile.name}"
                         val localFile = File(pathLocal, ftpFile.name)
                         if (ftpFile.isFile && (ftpFile.name.endsWith(".rar") || ftpFile.name.endsWith(".zip"))) {
                             try {
                                 if (!localFile.exists()) {
                                     logger.info("Find version: $appName - ${ftpFile.name}")
-                                    downloadFile(ftpClient, ftpFile, localFile, remoteFilePath, appName)
+                                    downloadFile(ftpClient, ftpFile, localFile, remoteFilePathChild, appName)
                                 } else {
                                     if (localFile.isFile) {
-                                        var reload = false
-                                        val localFileSize: Long = localFile.length()
-                                        val localFileTime: Long = localFile.lastModified()
-                                        val ftpFileSize: Long = ftpFile.size
-                                        val ftpFileTime: Long = ftpFile.timestamp.timeInMillis
-                                        if (localFileSize != ftpFileSize) {
-                                            logger.info("Check error(size): $appName - (ftp $ftpFileSize | local $localFileSize)")
-                                            reload = true
+                                        var ftpFileSha = ftpFiles.filter { it -> it.name.contains("sha") && it.name.contains("Client")}
+                                        var shaFtp = downloadFileToString(ftpClient, "$remoteFilePathParent/${ftpFileSha.first().name}").split(" ").first()
+                                        var shaLocal = calculateFileHash(localFile)
+                                        if(shaFtp != shaLocal) {
+                                            println("Check error(hash): $appName - (ftp $shaFtp | local $shaLocal)")
+                                            var reload = false
+                                            val localFileSize: Long = localFile.length()
+                                            val localFileTime: Long = localFile.lastModified()
+                                            val ftpFileSize: Long = ftpFile.size
+                                            val ftpFileTime: Long = ftpFile.timestamp.timeInMillis
+                                            if (localFileSize != ftpFileSize) {
+                                                logger.info("Check error(size): $appName - (ftp $ftpFileSize | local $localFileSize)")
+                                                reload = true
+                                            }
+                                            if (localFileTime != ftpFileTime) {
+                                                reload = true
+                                                logger.info("Check error(last modified): $appName - (ftp $ftpFileTime | local $localFileTime)")
+                                            }
+                                            if (reload) downloadFile(ftpClient, ftpFile, localFile, remoteFilePathChild, appName)
                                         }
-                                        if (localFileTime != ftpFileTime) {
-                                            reload = true
-                                            logger.info("Check error(last modified): $appName - (ftp $ftpFileTime | local $localFileTime)")
-                                        }
-                                        if (reload) downloadFile(ftpClient, ftpFile, localFile, remoteFilePath, appName)
                                     }
                                 }
                             } catch (e: Exception) {
