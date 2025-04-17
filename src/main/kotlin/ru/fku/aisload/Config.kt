@@ -13,6 +13,8 @@ class Config {
     var ftpPassword: String = ""
     var directories: ArrayList<DirectoryPath> = ArrayList()
     var maxFolderToKeep: Int = 0
+    var maxRetries: Int = 0
+    var retryDelayMin: Long = 0
 
     companion object {
         fun load(path: String): Config? {

@@ -26,6 +26,7 @@ fun main(args: Array<String>) {
         config = Config.load(args[0])
         if (config != null) {
             applicationContext = runApplication<AisLoadApplication>()
+            FTPScheduledTask(FtpService()).runFtpTask()
         } else {
             logger.error("Config not laded.")
         }

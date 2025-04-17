@@ -27,8 +27,13 @@ class FtpService {
             val folders = ftpClient.listFiles(pathFtp)
                 .filter { it.isDirectory && it.name.matches(Regex("\\d+_\\d+_\\d+_\\d+")) }
                 .mapNotNull { parseFolderName(it.name) }
-                .sortedByDescending { it.name }
-                .take(config?.maxFolderToKeep ?: 999)
+                .sortedWith(compareByDescending<FolderInfo> { it.year }
+                    .thenByDescending { it.month }
+                    .thenByDescending { it.day }
+                    .thenByDescending { it.buildNumber }
+                )
+                .take(config?.maxFolderToKeep ?: 3)
+
             for (folder in folders) {
                 downloadFolder(ftpClient, "$pathFtp/${folder.name}", pathLocal, appName)
             }
@@ -36,8 +41,15 @@ class FtpService {
             if (localFiles != null) {
                 val filesToDelete = localFiles
                     .filter { it.isFile && (it.name.endsWith(".rar") || it.name.endsWith(".zip")) }
-                    .sortedByDescending { it.name }
-                    .drop(config?.maxFolderToKeep ?: 999)
+                    .mapNotNull { parseFileName(it.name) }
+                    .sortedWith(compareByDescending<FileInfo> { it.year }
+                        .thenByDescending { it.month }
+                        .thenByDescending { it.day }
+                        .thenByDescending { it.buildNumber }
+                    )
+                    .mapNotNull { fileInfo -> localFiles.find { it.name == fileInfo.name } }
+                    .drop(config?.maxFolderToKeep ?: 99)
+
                 for (file in filesToDelete) {
                     file.delete()
                 }
@@ -66,7 +78,6 @@ class FtpService {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-
     private fun downloadFile(
         ftpClient: FTPClient,
         ftpFile: FTPFile,
@@ -74,12 +85,29 @@ class FtpService {
         remoteFilePath: String,
         appName: String
     ) {
-        logger.info("Load start: $appName - ${ftpFile.name}")
-        val outputStream = FileOutputStream(localFile)
-        ftpClient.retrieveFile(remoteFilePath, outputStream)
-        outputStream.close()
-        localFile.setLastModified(ftpFile.timestamp.timeInMillis)
-        logger.info("Load end: $appName - ${ftpFile.name}")
+        val maxRetries: Int = AisLoadApplication.config?.maxRetries ?: 3
+        var retryDelayMin: Long = AisLoadApplication.config?.retryDelayMin ?: 5
+        retryDelayMin = retryDelayMin.times(60000)
+        var attempt = 0
+        while (attempt < maxRetries) {
+            try {
+                logger.info("Load start: $appName - ${ftpFile.name} (Attempt ${attempt + 1})")
+                val outputStream = FileOutputStream(localFile)
+                ftpClient.retrieveFile(remoteFilePath, outputStream)
+                outputStream.close()
+                localFile.setLastModified(ftpFile.timestamp.timeInMillis)
+                logger.info("Load end: $appName - ${ftpFile.name}")
+                return
+            } catch (e: Exception) {
+                attempt++
+                logger.error("Error downloading file: ${ftpFile.name}. Attempt $attempt of $maxRetries. Error: ${e.message}")
+                if (attempt >= maxRetries) {
+                    logger.error("Max retries reached. Failed to download file: ${ftpFile.name}")
+                    throw e
+                }
+                Thread.sleep(retryDelayMin)
+            }
+        }
     }
 
     private fun downloadFileToString(ftpClient: FTPClient, remoteFilePath: String, charset: Charset = Charsets.UTF_8): String {
@@ -110,9 +138,9 @@ class FtpService {
                                     downloadFile(ftpClient, ftpFile, localFile, remoteFilePathChild, appName)
                                 } else {
                                     if (localFile.isFile) {
-                                        var ftpFileSha = ftpFiles.filter { it -> it.name.contains("sha") && it.name.contains("Client")}
-                                        var shaFtp = downloadFileToString(ftpClient, "$remoteFilePathParent/${ftpFileSha.first().name}").split(" ").first()
-                                        var shaLocal = calculateFileHash(localFile)
+                                        val ftpFileSha = ftpFiles.filter { it -> it.name.contains("sha") && it.name.contains("Client")}
+                                        val shaFtp = downloadFileToString(ftpClient, "$remoteFilePathParent/${ftpFileSha.first().name}").split(" ").first()
+                                        val shaLocal = calculateFileHash(localFile)
                                         if(shaFtp != shaLocal) {
                                             println("Check error(hash): $appName - (ftp $shaFtp | local $shaLocal)")
                                             var reload = false
@@ -149,6 +177,25 @@ class FtpService {
         if (parts.size != 4) return null
         return try {
             FolderInfo(
+                name = name,
+                year = parts[0].toInt(),
+                month = parts[1].toInt(),
+                day = parts[2].toInt(),
+                buildNumber = parts[3].toInt()
+            )
+        } catch (e: NumberFormatException) {
+            logger.error(e.message)
+            null
+        }
+    }
+
+    private fun parseFileName(name: String): FileInfo? {
+        val partsFullName = name.split("_")
+        if (partsFullName.size != 3) return null
+
+        val parts = partsFullName[2].split(".")
+        return try {
+            FileInfo(
                 name = name,
                 year = parts[0].toInt(),
                 month = parts[1].toInt(),
