@@ -32,7 +32,7 @@ class FtpService {
                     .thenByDescending { it.day }
                     .thenByDescending { it.buildNumber }
                 )
-                .take(config?.maxFolderToKeep ?: 3)
+                .take(config?.maxFolderToKeep ?: 1)
 
             for (folder in folders) {
                 downloadFolder(ftpClient, "$pathFtp/${folder.name}", pathLocal, appName)
@@ -103,7 +103,7 @@ class FtpService {
                 logger.error("Error downloading file: ${ftpFile.name}. Attempt $attempt of $maxRetries. Error: ${e.message}")
                 if (attempt >= maxRetries) {
                     logger.error("Max retries reached. Failed to download file: ${ftpFile.name}")
-                    throw e
+                    return
                 }
                 Thread.sleep(retryDelayMin)
             }
