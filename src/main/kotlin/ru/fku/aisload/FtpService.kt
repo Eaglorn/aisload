@@ -110,7 +110,11 @@ class FtpService {
         }
     }
 
-    private fun downloadFileToString(ftpClient: FTPClient, remoteFilePath: String, charset: Charset = Charsets.UTF_8): String {
+    private fun downloadFileToString(
+        ftpClient: FTPClient,
+        remoteFilePath: String,
+        charset: Charset = Charsets.UTF_8
+    ): String {
         try {
             val byteArrayOutputStream = ByteArrayOutputStream()
             ftpClient.retrieveFile(remoteFilePath, byteArrayOutputStream)
@@ -138,10 +142,14 @@ class FtpService {
                                     downloadFile(ftpClient, ftpFile, localFile, remoteFilePathChild, appName)
                                 } else {
                                     if (localFile.isFile) {
-                                        val ftpFileSha = ftpFiles.filter { it -> it.name.contains("sha") && it.name.contains("Client")}
-                                        val shaFtp = downloadFileToString(ftpClient, "$remoteFilePathParent/${ftpFileSha.first().name}").split(" ").first()
+                                        val ftpFileSha =
+                                            ftpFiles.filter { it -> it.name.contains("sha") && it.name.contains("Client") }
+                                        val shaFtp = downloadFileToString(
+                                            ftpClient,
+                                            "$remoteFilePathParent/${ftpFileSha.first().name}"
+                                        ).split(" ").first()
                                         val shaLocal = calculateFileHash(localFile)
-                                        if(shaFtp != shaLocal) {
+                                        if (shaFtp != shaLocal) {
                                             println("Check error(hash): $appName - (ftp $shaFtp | local $shaLocal)")
                                             var reload = false
                                             val localFileSize: Long = localFile.length()
@@ -156,7 +164,13 @@ class FtpService {
                                                 reload = true
                                                 logger.info("Check error(last modified): $appName - (ftp $ftpFileTime | local $localFileTime)")
                                             }
-                                            if (reload) downloadFile(ftpClient, ftpFile, localFile, remoteFilePathChild, appName)
+                                            if (reload) downloadFile(
+                                                ftpClient,
+                                                ftpFile,
+                                                localFile,
+                                                remoteFilePathChild,
+                                                appName
+                                            )
                                         }
                                     }
                                 }
